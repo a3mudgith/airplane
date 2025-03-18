@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Line } from "recharts";
+import { LineChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 export default function AirplaneGame() {
   const [multiplier, setMultiplier] = useState(2);
@@ -10,9 +12,19 @@ export default function AirplaneGame() {
   const [balance, setBalance] = useState(1000);
   const [bet, setBet] = useState(100);
   const [history, setHistory] = useState([]);
+  const [flightData, setFlightData] = useState([]);
 
   useEffect(() => {
     if (isFlying) {
+      let currentMultiplier = 1;
+      let dataPoints = [];
+      const interval = setInterval(() => {
+        currentMultiplier += Math.random() * 2 - 0.5;
+        if (currentMultiplier < 1) currentMultiplier = 1;
+        dataPoints.push({ time: dataPoints.length, multiplier: currentMultiplier.toFixed(2) });
+        setFlightData([...dataPoints]);
+      }, 500);
+      
       const randomMultiplier = Math.floor(Math.random() * 99) + 2;
       setMultiplier(randomMultiplier);
       const flightDuration = Math.random() * 5000 + 3000;
@@ -21,9 +33,13 @@ export default function AirplaneGame() {
       const crashTimer = setTimeout(() => {
         setGameOver(true);
         setIsFlying(false);
-        setHistory((prev) => [...prev, { result: "Lost", multiplier: multiplier }]);
+        setHistory((prev) => [...prev, { result: "Lost", multiplier: currentMultiplier.toFixed(2) }]);
+        clearInterval(interval);
       }, crashTime);
-      return () => clearTimeout(crashTimer);
+      return () => {
+        clearTimeout(crashTimer);
+        clearInterval(interval);
+      };
     }
   }, [isFlying]);
 
@@ -33,6 +49,7 @@ export default function AirplaneGame() {
       setIsFlying(true);
       setGameOver(false);
       setWon(false);
+      setFlightData([]);
     }
   };
 
@@ -52,6 +69,7 @@ export default function AirplaneGame() {
     setGameOver(false);
     setWon(false);
     setIsFlying(false);
+    setFlightData([]);
   };
 
   return (
@@ -60,17 +78,21 @@ export default function AirplaneGame() {
       <p className="text-xl font-semibold">Balance: ₹{balance}</p>
       {gameOver && !won && <p className="text-red-300">Game Over! Plane crashed.</p>}
       {won && <p className="text-green-300">You won at {multiplier}x!</p>}
+      
       <motion.div
         className="w-16 h-16 bg-gray-800 text-white flex items-center justify-center rounded-full mt-4"
-        animate={isFlying ? { x: [0, 200, 400], y: [0, -50, -100] } : {}}
+        animate={isFlying ? { x: [0, 200, 400], y: [0, -50, -100, -50] } : {}}
         transition={{ duration: 5 }}
       >✈️</motion.div>
-      <p className="text-xl mt-2">Multiplier: {isFlying ? multiplier : "-"}x</p>
+      
+      <p className="text-2xl font-bold mt-2">Multiplier: {isFlying ? multiplier.toFixed(2) : "-"}x</p>
+      
       <div className="mt-4 flex space-x-2">
         {!isFlying && !gameOver && <Button onClick={startGame}>Start</Button>}
         {isFlying && <Button onClick={withdraw} className="bg-green-500">Withdraw</Button>}
         <Button onClick={resetGame} className="bg-red-500">Reset</Button>
       </div>
+      
       <div className="mt-6 w-80 bg-white text-black p-4 rounded-lg shadow-md">
         <h2 className="text-lg font-bold mb-2">History Log</h2>
         <ul>
@@ -80,6 +102,19 @@ export default function AirplaneGame() {
             </li>
           ))}
         </ul>
+      </div>
+      
+      <div className="mt-6 w-96 h-60 bg-white p-4 rounded-lg shadow-md">
+        <h2 className="text-lg font-bold mb-2 text-black">Flight Path</h2>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={flightData}>
+            <XAxis dataKey="time" stroke="#000" />
+            <YAxis stroke="#000" domain={[1, 'auto']} />
+            <CartesianGrid strokeDasharray="3 3" />
+            <Tooltip />
+            <Line type="monotone" dataKey="multiplier" stroke="#ff7300" strokeWidth={2} dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
