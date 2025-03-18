@@ -1,0 +1,86 @@
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+
+export default function AirplaneGame() {
+  const [multiplier, setMultiplier] = useState(2);
+  const [isFlying, setIsFlying] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
+  const [won, setWon] = useState(false);
+  const [balance, setBalance] = useState(1000);
+  const [bet, setBet] = useState(100);
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    if (isFlying) {
+      const randomMultiplier = Math.floor(Math.random() * 99) + 2;
+      setMultiplier(randomMultiplier);
+      const flightDuration = Math.random() * 5000 + 3000;
+      const crashTime = Math.random() * flightDuration;
+
+      const crashTimer = setTimeout(() => {
+        setGameOver(true);
+        setIsFlying(false);
+        setHistory((prev) => [...prev, { result: "Lost", multiplier: multiplier }]);
+      }, crashTime);
+      return () => clearTimeout(crashTimer);
+    }
+  }, [isFlying]);
+
+  const startGame = () => {
+    if (balance >= bet) {
+      setBalance(balance - bet);
+      setIsFlying(true);
+      setGameOver(false);
+      setWon(false);
+    }
+  };
+
+  const withdraw = () => {
+    if (isFlying) {
+      const winnings = bet * multiplier;
+      setBalance(balance + winnings);
+      setWon(true);
+      setIsFlying(false);
+      setHistory((prev) => [...prev, { result: "Won", multiplier: multiplier, winnings: winnings }]);
+    }
+  };
+
+  const resetGame = () => {
+    setBalance(1000);
+    setHistory([]);
+    setGameOver(false);
+    setWon(false);
+    setIsFlying(false);
+  };
+
+  return (
+    <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-b from-blue-400 to-indigo-600 text-white">
+      <h1 className="text-3xl font-bold mb-4">Airplane Multiplier Game</h1>
+      <p className="text-xl font-semibold">Balance: ₹{balance}</p>
+      {gameOver && !won && <p className="text-red-300">Game Over! Plane crashed.</p>}
+      {won && <p className="text-green-300">You won at {multiplier}x!</p>}
+      <motion.div
+        className="w-16 h-16 bg-gray-800 text-white flex items-center justify-center rounded-full mt-4"
+        animate={isFlying ? { x: [0, 200, 400], y: [0, -50, -100] } : {}}
+        transition={{ duration: 5 }}
+      >✈️</motion.div>
+      <p className="text-xl mt-2">Multiplier: {isFlying ? multiplier : "-"}x</p>
+      <div className="mt-4 flex space-x-2">
+        {!isFlying && !gameOver && <Button onClick={startGame}>Start</Button>}
+        {isFlying && <Button onClick={withdraw} className="bg-green-500">Withdraw</Button>}
+        <Button onClick={resetGame} className="bg-red-500">Reset</Button>
+      </div>
+      <div className="mt-6 w-80 bg-white text-black p-4 rounded-lg shadow-md">
+        <h2 className="text-lg font-bold mb-2">History Log</h2>
+        <ul>
+          {history.map((entry, index) => (
+            <li key={index} className={entry.result === "Won" ? "text-green-600" : "text-red-600"}>
+              {entry.result} - {entry.multiplier}x {entry.winnings ? `(+₹${entry.winnings})` : ""}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
